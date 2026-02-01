@@ -1,0 +1,107 @@
+"""Timing helpers for overview logging."""
+
+from __future__ import annotations
+
+import logging
+import time
+import uuid
+from contextlib import contextmanager
+from dataclasses import dataclass
+from typing import Callable, Generator, Optional, TypeVar, cast
+
+
+DEFAULT_OVERVIEW_LOGGER = "org_logging.overview"
+
+
+@dataclass(frozen=True)
+class TimingResult:
+    name: str
+    elapsed_ms: float
+    run_id: str
+
+
+def _resolve_logger(logger: Optional[logging.Logger]) -> logging.Logger:
+    return logger or logging.getLogger(DEFAULT_OVERVIEW_LOGGER)
+
+
+def _emit_duration(
+    *,
+    logger: logging.Logger,
+    name: str,
+    elapsed_ms: float,
+    run_id: str,
+) -> None:
+    logger.info(
+        "duration",
+        extra={
+            "event": "duration",
+            "name": name,
+            "elapsed_ms": elapsed_ms,
+            "run_id": run_id,
+        },
+    )
+
+
+@contextmanager
+def log_timing(
+    name: str,
+    *,
+    run_id: Optional[str] = None,
+    logger: Optional[logging.Logger] = None,
+) -> Generator[TimingResult, None, None]:
+    """Measure elapsed time for a block and log to the overview feed."""
+    resolved_logger = _resolve_logger(logger)
+    resolved_run_id = run_id or str(uuid.uuid4())
+    start = time.perf_counter()
+    try:
+        yield TimingResult(name=name, elapsed_ms=0.0, run_id=resolved_run_id)
+    finally:
+        elapsed_ms = (time.perf_counter() - start) * 1000
+        _emit_duration(
+            logger=resolved_logger,
+            name=name,
+            elapsed_ms=elapsed_ms,
+            run_id=resolved_run_id,
+        )
+
+
+F = TypeVar("F", bound=Callable[..., object])
+
+
+def log_duration(
+    func: Optional[F] = None,
+    *,
+    name: Optional[str] = None,
+    run_id: Optional[str] = None,
+    logger: Optional[logging.Logger] = None,
+) -> Callable[[F], F] | F:
+    """Decorator for logging function runtime to the overview feed."""
+
+    def decorator(target: F) -> F:
+        resolved_name = name or target.__qualname__
+
+        def wrapper(*args: object, **kwargs: object) -> object:
+            resolved_run_id = run_id or str(uuid.uuid4())
+            resolved_logger = _resolve_logger(logger)
+            start = time.perf_counter()
+            try:
+                return target(*args, **kwargs)
+            finally:
+                elapsed_ms = (time.perf_counter() - start) * 1000
+                _emit_duration(
+                    logger=resolved_logger,
+                    name=resolved_name,
+                    elapsed_ms=elapsed_ms,
+                    run_id=resolved_run_id,
+                )
+
+        wrapper = cast(F, wrapper)
+        wrapper.__name__ = getattr(target, "__name__", resolved_name)
+        wrapper.__doc__ = target.__doc__
+        wrapper.__qualname__ = getattr(target, "__qualname__", resolved_name)
+        return wrapper
+
+    if func is not None:
+        return decorator(func)
+
+    return decorator
