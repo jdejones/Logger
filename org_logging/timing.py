@@ -41,7 +41,9 @@ def _emit_duration(
     run_id: str,
 ) -> None:
     logger.info(
-        "duration",
+        "%s took %.2fms",
+        name,
+        elapsed_ms,
         extra={
             "event": "duration",
             "name": name,
