@@ -39,3 +39,20 @@ The UI reads logs from paths configured via environment variables:
 - The overview feed polls the overview log and appends new lines every 2 seconds.
 - If an overview line is JSON with `detail_log`, `detail_path`, `artifact_metadata`, `artifact_path`, or `id` fields, clicking the line will auto-fill the detail panel and fetch matching JSONL entries.
 - You can always manually input a detail log path, artifact metadata path, and optional entry ID.
+## Usage
+
+```python
+from org_logging import configure_logging, get_logger
+
+run_id = configure_logging(app_name="billing-service", log_dir="logs")
+logger = get_logger(__name__)
+
+logger.info("Started service")
+logger.debug("Loaded config", extra={"feature_flag": True})
+```
+
+The configuration writes:
+
+- An overview text log at `logs/overview.log` (INFO and higher)
+- A detail JSONL log at `logs/detail.jsonl` (DEBUG and higher)
+- Console output with the overview formatter
