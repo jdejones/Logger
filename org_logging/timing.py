@@ -24,6 +24,15 @@ def _resolve_logger(logger: Optional[logging.Logger]) -> logging.Logger:
     return logger or logging.getLogger(DEFAULT_OVERVIEW_LOGGER)
 
 
+def _resolve_run_id(logger: logging.Logger, run_id: Optional[str]) -> str:
+    if run_id:
+        return run_id
+    extra = getattr(logger, "extra", None)
+    if isinstance(extra, dict) and extra.get("run_id"):
+        return str(extra["run_id"])
+    return str(uuid.uuid4())
+
+
 def _emit_duration(
     *,
     logger: logging.Logger,
@@ -51,7 +60,7 @@ def log_timing(
 ) -> Generator[TimingResult, None, None]:
     """Measure elapsed time for a block and log to the overview feed."""
     resolved_logger = _resolve_logger(logger)
-    resolved_run_id = run_id or str(uuid.uuid4())
+    resolved_run_id = _resolve_run_id(resolved_logger, run_id)
     start = time.perf_counter()
     try:
         yield TimingResult(name=name, elapsed_ms=0.0, run_id=resolved_run_id)
@@ -81,8 +90,8 @@ def log_duration(
         resolved_name = name or target.__qualname__
 
         def wrapper(*args: object, **kwargs: object) -> object:
-            resolved_run_id = run_id or str(uuid.uuid4())
             resolved_logger = _resolve_logger(logger)
+            resolved_run_id = _resolve_run_id(resolved_logger, run_id)
             start = time.perf_counter()
             try:
                 return target(*args, **kwargs)

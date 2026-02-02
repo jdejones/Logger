@@ -42,6 +42,8 @@ pip install -r ui/requirements.txt
 export OVERVIEW_LOG_PATH=/path/to/overview.log
 export DETAIL_LOG_PATH=/path/to/detail.jsonl
 export ARTIFACT_METADATA_PATH=/path/to/artifacts.json
+export LOG_DIR=/path/to/logs
+export OVERVIEW_LOG_FILENAME=overview.log
 
 python -m flask --app ui/app.py run --host 0.0.0.0 --port 5000
 ```
@@ -57,6 +59,8 @@ The UI reads logs from paths configured via environment variables:
 | `OVERVIEW_LOG_PATH` | Path to the overview log file (plain text or JSON lines). | `./logs/overview.log` |
 | `DETAIL_LOG_PATH` | Optional default JSONL file for detail log entries. | unset |
 | `ARTIFACT_METADATA_PATH` | Optional default JSON file for artifact metadata. | unset |
+| `LOG_DIR` | Base directory used when `OVERVIEW_LOG_PATH` is not set. | `./logs` |
+| `OVERVIEW_LOG_FILENAME` | Overview log filename under `LOG_DIR` when path is unset. | `overview.log` |
 | `LOG_MAX_ENTRIES` | Max number of log lines/entries returned per request. | `200` |
 
 ### Usage notes

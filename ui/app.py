@@ -17,8 +17,22 @@ class LogConfig:
     max_entries: int
 
 
+def _default_log_dir() -> Path:
+    return Path(os.getenv("LOG_DIR", "./logs")).expanduser()
+
+
+def _default_log_filename(env_key: str, fallback: str) -> str:
+    return os.getenv(env_key, fallback)
+
+
 def load_config() -> LogConfig:
-    overview_path = Path(os.getenv("OVERVIEW_LOG_PATH", "./logs/overview.log")).expanduser()
+    log_dir = _default_log_dir()
+    overview_path = os.getenv("OVERVIEW_LOG_PATH")
+    if overview_path:
+        overview_path = Path(overview_path).expanduser()
+    else:
+        overview_filename = _default_log_filename("OVERVIEW_LOG_FILENAME", "overview.log")
+        overview_path = log_dir / overview_filename
     detail_path_value = os.getenv("DETAIL_LOG_PATH")
     artifact_path_value = os.getenv("ARTIFACT_METADATA_PATH")
     max_entries = int(os.getenv("LOG_MAX_ENTRIES", "200"))
