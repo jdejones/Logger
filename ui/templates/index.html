@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Logger UI</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <style>
+    body {
+      padding: 1.5rem;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 1.5rem;
+    }
+    .feed {
+      max-height: 70vh;
+      overflow-y: auto;
+      background: #111827;
+      color: #f9fafb;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    }
+    .feed-entry {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 0.5rem 0;
+      white-space: pre-wrap;
+    }
+    .feed-entry:last-child {
+      border-bottom: none;
+    }
+    .meta {
+      font-size: 0.8rem;
+      color: #9ca3af;
+    }
+    .details-output {
+      max-height: 40vh;
+      overflow-y: auto;
+      background: #f3f4f6;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Logger Live Feed</h1>
+    <p>Overview log: <strong id="overview-path"></strong></p>
+  </header>
+
+  <main class="layout">
+    <section>
+      <div class="meta" id="feed-status">Connecting...</div>
+      <div class="feed" id="feed"></div>
+    </section>
+
+    <aside>
+      <h2>Detail & Artifacts</h2>
+      <form id="detail-form">
+        <label>
+          Detail log path
+          <input type="text" id="detail-path" placeholder="/path/to/detail.jsonl" value="{{ detail_path }}" />
+        </label>
+        <label>
+          Artifact metadata path
+          <input type="text" id="artifact-path" placeholder="/path/to/artifacts.json" value="{{ artifact_path }}" />
+        </label>
+        <label>
+          Entry ID (optional)
+          <input type="text" id="entry-id" placeholder="entry id" />
+        </label>
+        <button type="submit">Fetch details</button>
+      </form>
+
+      <p class="meta">Click a feed item to auto-fill paths if the line is JSON with <code>detail_log</code> or <code>artifact_metadata</code>.</p>
+
+      <div class="details-output" id="details-output">Waiting for selection...</div>
+    </aside>
+  </main>
+
+  <script>
+    const feed = document.getElementById('feed');
+    const feedStatus = document.getElementById('feed-status');
+    const overviewPath = document.getElementById('overview-path');
+    const detailForm = document.getElementById('detail-form');
+    const detailPathInput = document.getElementById('detail-path');
+    const artifactPathInput = document.getElementById('artifact-path');
+    const entryIdInput = document.getElementById('entry-id');
+    const detailsOutput = document.getElementById('details-output');
+    let offset = null;
+
+    async function loadConfig() {
+      const response = await fetch('/api/config');
+      const data = await response.json();
+      overviewPath.textContent = data.overview_path || 'Not configured';
+    }
+
+    function formatEntry(entry, rawLine) {
+      const container = document.createElement('div');
+      container.className = 'feed-entry';
+      const line = document.createElement('div');
+      line.textContent = rawLine;
+      container.appendChild(line);
+
+      if (entry && typeof entry === 'object') {
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        const detailPath = entry.detail_log || entry.detail_path || '';
+        const artifactPath = entry.artifact_metadata || entry.artifact_path || '';
+        const entryId = entry.id || '';
+        meta.textContent = [
+          detailPath ? `detail: ${detailPath}` : null,
+          artifactPath ? `artifact: ${artifactPath}` : null,
+          entryId ? `id: ${entryId}` : null,
+        ].filter(Boolean).join(' | ');
+        container.appendChild(meta);
+
+        container.addEventListener('click', () => {
+          if (detailPath) {
+            detailPathInput.value = detailPath;
+          }
+          if (artifactPath) {
+            artifactPathInput.value = artifactPath;
+          }
+          if (entryId) {
+            entryIdInput.value = entryId;
+          }
+          if (detailPath || artifactPath) {
+            fetchDetails();
+          }
+        });
+      }
+
+      return container;
+    }
+
+    function appendEntries(lines) {
+      lines.forEach((line) => {
+        let parsed = null;
+        try {
+          parsed = JSON.parse(line);
+        } catch (error) {
+          parsed = null;
+        }
+        const entry = formatEntry(parsed, line);
+        feed.appendChild(entry);
+      });
+      feed.scrollTop = feed.scrollHeight;
+    }
+
+    async function pollOverview() {
+      const url = offset === null ? '/api/overview' : `/api/overview?offset=${offset}`;
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+        feedStatus.textContent = data.error ? data.error : `Last update: ${new Date().toLocaleTimeString()}`;
+        offset = data.offset;
+        if (data.lines && data.lines.length) {
+          appendEntries(data.lines);
+        }
+      } catch (error) {
+        feedStatus.textContent = 'Failed to fetch overview log.';
+      }
+    }
+
+    async function fetchDetails(event) {
+      if (event) {
+        event.preventDefault();
+      }
+      const params = new URLSearchParams();
+      if (detailPathInput.value) {
+        params.append('detail_path', detailPathInput.value);
+      }
+      if (artifactPathInput.value) {
+        params.append('artifact_path', artifactPathInput.value);
+      }
+      if (entryIdInput.value) {
+        params.append('id', entryIdInput.value);
+      }
+      const response = await fetch(`/api/detail?${params.toString()}`);
+      const data = await response.json();
+      detailsOutput.textContent = JSON.stringify(data, null, 2);
+    }
+
+    detailForm.addEventListener('submit', fetchDetails);
+
+    loadConfig();
+    pollOverview();
+    setInterval(pollOverview, 2000);
+  </script>
+</body>
+</html>
