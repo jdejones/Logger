@@ -4,7 +4,7 @@ Intended for creating, maintaining, and observing logs across repositories.
 
 ## Timing helpers
 Use the `log_timing` context manager or `log_duration` decorator to emit a
-structured overview event with `event="duration"`, `name`, `elapsed_ms`, and
+structured overview event with `event="duration"`, `duration_name`, `elapsed_ms`, and
 `run_id` fields. These events are sent to the `org_logging.overview` logger so
 handlers can route them to your overview log feed.
 

@@ -46,7 +46,7 @@ def _emit_duration(
         elapsed_ms,
         extra={
             "event": "duration",
-            "name": name,
+            "duration_name": name,
             "elapsed_ms": elapsed_ms,
             "run_id": run_id,
         },
