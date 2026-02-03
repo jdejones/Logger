@@ -42,7 +42,9 @@ def _emit_duration(
     unit: str,
 ) -> None:
     logger.info(
-        "duration",
+        "%s took %.2fms",
+        name,
+        elapsed_ms,
         extra={
             "event": "duration",
             "duration_name": name,
@@ -66,6 +68,42 @@ def _emit_return_count(
             "event": "return_count",
             "return_count_name": name,
             "count": count,
+            "elapsed_ms": elapsed_ms,
+            "run_id": run_id,
+        },
+    )
+
+
+def _emit_return_count(
+    *,
+    logger: logging.Logger,
+    name: str,
+    count: int,
+    run_id: str,
+) -> None:
+    logger.info(
+        "return_count",
+        extra={
+            "event": "return_count",
+            "return_count_name": name,
+            "count": count,
+def _emit_duration_seconds(
+    *,
+    logger: logging.Logger,
+    name: str,
+    elapsed_s: float,
+    run_id: str,
+) -> None:
+    logger.info(
+        "%s took %.3fs",
+        name,
+        elapsed_s,
+        extra={
+            "event": "duration",
+            "duration_name": name,
+            "elapsed_s": elapsed_s,
+            # Keep milliseconds for existing dashboards/consumers.
+            "elapsed_ms": elapsed_s * 1000,
             "run_id": run_id,
         },
     )
@@ -126,6 +164,11 @@ def log_duration(
                     logger=resolved_logger,
                     name=resolved_name,
                     elapsed_ms=elapsed,
+                elapsed_s = time.perf_counter() - start
+                _emit_duration_seconds(
+                    logger=resolved_logger,
+                    name=resolved_name,
+                    elapsed_s=elapsed_s,
                     run_id=resolved_run_id,
                     unit=resolved_unit,
                 )

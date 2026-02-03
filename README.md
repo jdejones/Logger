@@ -9,6 +9,13 @@ Use the `log_timing` context manager, `log_duration` decorator, or
 `duration_name`, `elapsed`, `unit`, and `run_id`. Return count events include
 `return_count_name`, `count`, and `run_id`. These events are sent to the
 `org_logging.overview` logger so handlers can route them to your overview log feed.
+`duration_name`, `elapsed_ms`, and `run_id`. Return count events include
+`return_count_name`, `count`, and `run_id`. These events are sent to the
+`org_logging.overview` logger so handlers can route them to your overview log feed.
+Use the `log_timing` context manager or `log_duration` decorator to emit a
+structured overview event with `event="duration"`, `duration_name`, `elapsed_ms`, and
+`run_id` fields. These events are sent to the `org_logging.overview` logger so
+handlers can route them to your overview log feed.
 
 ```python
 import logging
