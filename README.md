@@ -3,6 +3,12 @@
 Intended for creating, maintaining, and observing logs across repositories.
 
 ## Timing helpers
+Use the `log_timing` context manager, `log_duration` decorator, or
+`log_return_count` decorator to emit structured overview events with
+`event="duration"` or `event="return_count"`. Duration events include
+`duration_name`, `elapsed_ms`, and `run_id`. Return count events include
+`return_count_name`, `count`, and `run_id`. These events are sent to the
+`org_logging.overview` logger so handlers can route them to your overview log feed.
 Use the `log_timing` context manager or `log_duration` decorator to emit a
 structured overview event with `event="duration"`, `duration_name`, `elapsed_ms`, and
 `run_id` fields. These events are sent to the `org_logging.overview` logger so
@@ -11,7 +17,7 @@ handlers can route them to your overview log feed.
 ```python
 import logging
 
-from org_logging.timing import log_duration, log_timing
+from org_logging.timing import log_duration, log_return_count, log_timing
 
 logging.basicConfig(level=logging.INFO)
 overview_logger = logging.getLogger("org_logging.overview")
@@ -25,7 +31,12 @@ def compute():
     # Do work here.
     ...
 
+@log_return_count(name="analytics.load_items", logger=overview_logger)
+def load_items():
+    return [1, 2, 3]
+
 compute()
+load_items()
 ```
 ## GUI (live log viewer)
 

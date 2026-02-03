@@ -53,6 +53,19 @@ def _emit_duration(
     )
 
 
+def _emit_return_count(
+    *,
+    logger: logging.Logger,
+    name: str,
+    count: int,
+    run_id: str,
+) -> None:
+    logger.info(
+        "return_count",
+        extra={
+            "event": "return_count",
+            "return_count_name": name,
+            "count": count,
 def _emit_duration_seconds(
     *,
     logger: logging.Logger,
@@ -127,6 +140,49 @@ def log_duration(
                     elapsed_s=elapsed_s,
                     run_id=resolved_run_id,
                 )
+
+        wrapper = cast(F, wrapper)
+        wrapper.__name__ = getattr(target, "__name__", resolved_name)
+        wrapper.__doc__ = target.__doc__
+        wrapper.__qualname__ = getattr(target, "__qualname__", resolved_name)
+        return wrapper
+
+    if func is not None:
+        return decorator(func)
+
+    return decorator
+
+
+def log_return_count(
+    func: Optional[F] = None,
+    *,
+    name: Optional[str] = None,
+    run_id: Optional[str] = None,
+    logger: Optional[logging.Logger] = None,
+) -> Callable[[F], F] | F:
+    """Decorator for logging how many items a function returns."""
+
+    def decorator(target: F) -> F:
+        resolved_name = name or target.__qualname__
+
+        def wrapper(*args: object, **kwargs: object) -> object:
+            resolved_logger = _resolve_logger(logger)
+            resolved_run_id = _resolve_run_id(resolved_logger, run_id)
+            result = target(*args, **kwargs)
+            if result is None:
+                count = 0
+            else:
+                try:
+                    count = len(result)  # type: ignore[arg-type]
+                except TypeError:
+                    count = 1
+            _emit_return_count(
+                logger=resolved_logger,
+                name=resolved_name,
+                count=count,
+                run_id=resolved_run_id,
+            )
+            return result
 
         wrapper = cast(F, wrapper)
         wrapper.__name__ = getattr(target, "__name__", resolved_name)
