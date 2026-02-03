@@ -3,15 +3,17 @@
 Intended for creating, maintaining, and observing logs across repositories.
 
 ## Timing helpers
-Use the `log_timing` context manager or `log_duration` decorator to emit a
-structured overview event with `event="duration"`, `name`, `elapsed_ms`, and
-`run_id` fields. These events are sent to the `org_logging.overview` logger so
-handlers can route them to your overview log feed.
+Use the `log_timing` context manager, `log_duration` decorator, or
+`log_return_count` decorator to emit structured overview events with
+`event="duration"` or `event="return_count"`. Duration events include
+`duration_name`, `elapsed`, `unit`, and `run_id`. Return count events include
+`return_count_name`, `count`, and `run_id`. These events are sent to the
+`org_logging.overview` logger so handlers can route them to your overview log feed.
 
 ```python
 import logging
 
-from org_logging.timing import log_duration, log_timing
+from org_logging.timing import log_duration, log_return_count, log_timing
 
 logging.basicConfig(level=logging.INFO)
 overview_logger = logging.getLogger("org_logging.overview")
@@ -20,12 +22,17 @@ with log_timing("report.refresh", logger=overview_logger):
     # Do work here.
     ...
 
-@log_duration(name="analytics.compute", logger=overview_logger)
+@log_duration(name="analytics.compute", logger=overview_logger, unit="s")
 def compute():
     # Do work here.
     ...
 
+@log_return_count(name="analytics.load_items", logger=overview_logger)
+def load_items():
+    return [1, 2, 3]
+
 compute()
+load_items()
 ```
 ## GUI (live log viewer)
 
@@ -42,6 +49,8 @@ pip install -r ui/requirements.txt
 export OVERVIEW_LOG_PATH=/path/to/overview.log
 export DETAIL_LOG_PATH=/path/to/detail.jsonl
 export ARTIFACT_METADATA_PATH=/path/to/artifacts.json
+export LOG_DIR=/path/to/logs
+export OVERVIEW_LOG_FILENAME=overview.log
 
 python -m flask --app ui/app.py run --host 0.0.0.0 --port 5000
 ```
@@ -57,6 +66,8 @@ The UI reads logs from paths configured via environment variables:
 | `OVERVIEW_LOG_PATH` | Path to the overview log file (plain text or JSON lines). | `./logs/overview.log` |
 | `DETAIL_LOG_PATH` | Optional default JSONL file for detail log entries. | unset |
 | `ARTIFACT_METADATA_PATH` | Optional default JSON file for artifact metadata. | unset |
+| `LOG_DIR` | Base directory used when `OVERVIEW_LOG_PATH` is not set. | `./logs` |
+| `OVERVIEW_LOG_FILENAME` | Overview log filename under `LOG_DIR` when path is unset. | `overview.log` |
 | `LOG_MAX_ENTRIES` | Max number of log lines/entries returned per request. | `200` |
 
 ### Usage notes
@@ -81,3 +92,19 @@ The configuration writes:
 - An overview text log at `logs/overview.log` (INFO and higher)
 - A detail JSONL log at `logs/detail.jsonl` (DEBUG and higher)
 - Console output with the overview formatter
+
+## Analytics
+
+The `org_logging.analytics` module provides helpers for analyzing JSONL logs.
+
+```python
+from org_logging.analytics import (
+    count_events,
+    duration_stats,
+    load_detail_entries,
+)
+
+entries = load_detail_entries("logs/detail.jsonl")
+events = count_events(entries)
+durations = duration_stats(entries, unit="s")
+```
