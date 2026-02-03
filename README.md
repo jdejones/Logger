@@ -6,6 +6,9 @@ Intended for creating, maintaining, and observing logs across repositories.
 Use the `log_timing` context manager, `log_duration` decorator, or
 `log_return_count` decorator to emit structured overview events with
 `event="duration"` or `event="return_count"`. Duration events include
+`duration_name`, `elapsed`, `unit`, and `run_id`. Return count events include
+`return_count_name`, `count`, and `run_id`. These events are sent to the
+`org_logging.overview` logger so handlers can route them to your overview log feed.
 `duration_name`, `elapsed_ms`, and `run_id`. Return count events include
 `return_count_name`, `count`, and `run_id`. These events are sent to the
 `org_logging.overview` logger so handlers can route them to your overview log feed.
@@ -26,7 +29,7 @@ with log_timing("report.refresh", logger=overview_logger):
     # Do work here.
     ...
 
-@log_duration(name="analytics.compute", logger=overview_logger)
+@log_duration(name="analytics.compute", logger=overview_logger, unit="s")
 def compute():
     # Do work here.
     ...

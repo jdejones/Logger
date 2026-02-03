@@ -39,6 +39,7 @@ def _emit_duration(
     name: str,
     elapsed_ms: float,
     run_id: str,
+    unit: str,
 ) -> None:
     logger.info(
         "%s took %.2fms",
@@ -47,6 +48,26 @@ def _emit_duration(
         extra={
             "event": "duration",
             "duration_name": name,
+            "elapsed": elapsed_ms,
+            "unit": unit,
+            "run_id": run_id,
+        },
+    )
+
+
+def _emit_return_count(
+    *,
+    logger: logging.Logger,
+    name: str,
+    count: int,
+    run_id: str,
+) -> None:
+    logger.info(
+        "return_count",
+        extra={
+            "event": "return_count",
+            "return_count_name": name,
+            "count": count,
             "elapsed_ms": elapsed_ms,
             "run_id": run_id,
         },
@@ -94,6 +115,7 @@ def log_timing(
     *,
     run_id: Optional[str] = None,
     logger: Optional[logging.Logger] = None,
+    unit: str = "ms",
 ) -> Generator[TimingResult, None, None]:
     """Measure elapsed time for a block and log to the overview feed."""
     resolved_logger = _resolve_logger(logger)
@@ -103,11 +125,13 @@ def log_timing(
         yield TimingResult(name=name, elapsed_ms=0.0, run_id=resolved_run_id)
     finally:
         elapsed_ms = (time.perf_counter() - start) * 1000
+        elapsed, resolved_unit = _convert_duration(elapsed_ms, unit)
         _emit_duration(
             logger=resolved_logger,
             name=name,
-            elapsed_ms=elapsed_ms,
+            elapsed_ms=elapsed,
             run_id=resolved_run_id,
+            unit=resolved_unit,
         )
 
 
@@ -120,6 +144,7 @@ def log_duration(
     name: Optional[str] = None,
     run_id: Optional[str] = None,
     logger: Optional[logging.Logger] = None,
+    unit: str = "ms",
 ) -> Callable[[F], F] | F:
     """Decorator for logging function runtime to the overview feed."""
 
@@ -133,12 +158,19 @@ def log_duration(
             try:
                 return target(*args, **kwargs)
             finally:
+                elapsed_ms = (time.perf_counter() - start) * 1000
+                elapsed, resolved_unit = _convert_duration(elapsed_ms, unit)
+                _emit_duration(
+                    logger=resolved_logger,
+                    name=resolved_name,
+                    elapsed_ms=elapsed,
                 elapsed_s = time.perf_counter() - start
                 _emit_duration_seconds(
                     logger=resolved_logger,
                     name=resolved_name,
                     elapsed_s=elapsed_s,
                     run_id=resolved_run_id,
+                    unit=resolved_unit,
                 )
 
         wrapper = cast(F, wrapper)
@@ -151,6 +183,17 @@ def log_duration(
         return decorator(func)
 
     return decorator
+
+
+def _convert_duration(elapsed_ms: float, unit: str) -> tuple[float, str]:
+    normalized = unit.lower()
+    if normalized in {"ms", "millisecond", "milliseconds"}:
+        return elapsed_ms, "ms"
+    if normalized in {"s", "sec", "second", "seconds"}:
+        return elapsed_ms / 1000, "s"
+    if normalized in {"m", "min", "minute", "minutes"}:
+        return elapsed_ms / 60000, "m"
+    raise ValueError(f"Unsupported duration unit: {unit}")
 
 
 def log_return_count(
