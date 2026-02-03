@@ -87,6 +87,10 @@ def _emit_return_count(
             "event": "return_count",
             "return_count_name": name,
             "count": count,
+            "run_id": run_id,
+        },
+    )
+                
 def _emit_duration_seconds(
     *,
     logger: logging.Logger,
@@ -138,6 +142,17 @@ def log_timing(
 F = TypeVar("F", bound=Callable[..., object])
 
 
+def _convert_duration(elapsed_ms: float, unit: str) -> tuple[float, str]:
+    normalized = unit.lower()
+    if normalized in {"ms", "millisecond", "milliseconds"}:
+        return elapsed_ms, "ms"
+    if normalized in {"s", "sec", "second", "seconds"}:
+        return elapsed_ms / 1000, "s"
+    if normalized in {"m", "min", "minute", "minutes"}:
+        return elapsed_ms / 60000, "m"
+    raise ValueError(f"Unsupported duration unit: {unit}")
+
+
 def log_duration(
     func: Optional[F] = None,
     *,
@@ -164,6 +179,9 @@ def log_duration(
                     logger=resolved_logger,
                     name=resolved_name,
                     elapsed_ms=elapsed,
+                    run_id=resolved_run_id,
+                    unit=resolved_unit,
+                )
                 elapsed_s = time.perf_counter() - start
                 _emit_duration_seconds(
                     logger=resolved_logger,
@@ -185,15 +203,7 @@ def log_duration(
     return decorator
 
 
-def _convert_duration(elapsed_ms: float, unit: str) -> tuple[float, str]:
-    normalized = unit.lower()
-    if normalized in {"ms", "millisecond", "milliseconds"}:
-        return elapsed_ms, "ms"
-    if normalized in {"s", "sec", "second", "seconds"}:
-        return elapsed_ms / 1000, "s"
-    if normalized in {"m", "min", "minute", "minutes"}:
-        return elapsed_ms / 60000, "m"
-    raise ValueError(f"Unsupported duration unit: {unit}")
+
 
 
 def log_return_count(
