@@ -99,3 +99,19 @@ The configuration writes:
 - An overview text log at `logs/overview.log` (INFO and higher)
 - A detail JSONL log at `logs/detail.jsonl` (DEBUG and higher)
 - Console output with the overview formatter
+
+## Analytics
+
+The `org_logging.analytics` module provides helpers for analyzing JSONL logs.
+
+```python
+from org_logging.analytics import (
+    count_events,
+    duration_stats,
+    load_detail_entries,
+)
+
+entries = load_detail_entries("logs/detail.jsonl")
+events = count_events(entries)
+durations = duration_stats(entries, unit="s")
+```
