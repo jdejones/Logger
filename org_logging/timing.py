@@ -68,7 +68,6 @@ def _emit_return_count(
             "event": "return_count",
             "return_count_name": name,
             "count": count,
-            "elapsed_ms": elapsed_ms,
             "run_id": run_id,
         },
     )
@@ -97,6 +96,7 @@ def _emit_duration_seconds(
     name: str,
     elapsed_s: float,
     run_id: str,
+    unit: str,
 ) -> None:
     logger.info(
         "%s took %.3fs",
@@ -109,6 +109,7 @@ def _emit_duration_seconds(
             # Keep milliseconds for existing dashboards/consumers.
             "elapsed_ms": elapsed_s * 1000,
             "run_id": run_id,
+            "unit": unit,
         },
     )
 
@@ -188,7 +189,7 @@ def log_duration(
                     name=resolved_name,
                     elapsed_s=elapsed_s,
                     run_id=resolved_run_id,
-                    unit=resolved_unit,
+                    unit="s",
                 )
 
         wrapper = cast(F, wrapper)
