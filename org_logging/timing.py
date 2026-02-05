@@ -37,18 +37,19 @@ def _emit_duration(
     *,
     logger: logging.Logger,
     name: str,
-    elapsed_ms: float,
+    elapsed: float,
     run_id: str,
     unit: str,
 ) -> None:
     logger.info(
-        "%s took %.2fms",
+        "%s took %.2f%s",
         name,
-        elapsed_ms,
+        elapsed,
+        unit,
         extra={
             "event": "duration",
             "duration_name": name,
-            "elapsed": elapsed_ms,
+            "elapsed": elapsed,
             "unit": unit,
             "run_id": run_id,
         },
@@ -90,30 +91,6 @@ def _emit_return_count(
         },
     )
                 
-def _emit_duration_seconds(
-    *,
-    logger: logging.Logger,
-    name: str,
-    elapsed_s: float,
-    run_id: str,
-    unit: str,
-) -> None:
-    logger.info(
-        "%s took %.3fs",
-        name,
-        elapsed_s,
-        extra={
-            "event": "duration",
-            "duration_name": name,
-            "elapsed_s": elapsed_s,
-            # Keep milliseconds for existing dashboards/consumers.
-            "elapsed_ms": elapsed_s * 1000,
-            "run_id": run_id,
-            "unit": unit,
-        },
-    )
-
-
 @contextmanager
 def log_timing(
     name: str,
@@ -134,7 +111,7 @@ def log_timing(
         _emit_duration(
             logger=resolved_logger,
             name=name,
-            elapsed_ms=elapsed,
+            elapsed=elapsed,
             run_id=resolved_run_id,
             unit=resolved_unit,
         )
@@ -179,17 +156,9 @@ def log_duration(
                 _emit_duration(
                     logger=resolved_logger,
                     name=resolved_name,
-                    elapsed_ms=elapsed,
+                    elapsed=elapsed,
                     run_id=resolved_run_id,
                     unit=resolved_unit,
-                )
-                elapsed_s = time.perf_counter() - start
-                _emit_duration_seconds(
-                    logger=resolved_logger,
-                    name=resolved_name,
-                    elapsed_s=elapsed_s,
-                    run_id=resolved_run_id,
-                    unit="s",
                 )
 
         wrapper = cast(F, wrapper)
