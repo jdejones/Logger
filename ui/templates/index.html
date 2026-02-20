@@ -139,7 +139,8 @@
     }
 
     function appendEntries(lines) {
-      lines.forEach((line) => {
+      const fragment = document.createDocumentFragment();
+      [...lines].reverse().forEach((line) => {
         let parsed = null;
         try {
           parsed = JSON.parse(line);
@@ -147,9 +148,9 @@
           parsed = null;
         }
         const entry = formatEntry(parsed, line);
-        feed.appendChild(entry);
+        fragment.appendChild(entry);
       });
-      feed.scrollTop = feed.scrollHeight;
+      feed.prepend(fragment);
     }
 
     async function pollOverview() {
